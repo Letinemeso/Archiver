@@ -1,6 +1,13 @@
 #include "Archive.h"
 
 
+void Archive::set_error_message(const std::string &_message)
+{
+	m_error_message = _message;
+}
+
+
+
 Archive::Archive()
 {
 
@@ -29,8 +36,7 @@ void Archive::reset()
 {
 	m_unpacked_data.clear();
 	m_packed_data.clear();
-	m_error_log.clear();
-	m_errors_count = 0;
+	m_error_message.clear();
 }
 
 
@@ -49,7 +55,7 @@ void Archive::pack()
 {
 	if(m_unpacked_data.size() == 0)
 	{
-		append_error_message("No unpacked data specified");
+		set_error_message("No unpacked data specified");
 		return;
 	}
 
@@ -81,10 +87,17 @@ void Archive::pack()
 
 void Archive::unpack(const std::string &_raw_data)
 {
+	HCoder coder;
+	coder.decode(_raw_data);
+
+	if(!coder.is_ok())
+	{
+		set_error_message("Archive data was corrupted beyond restorability");
+		return;
+	}
+
 	m_packed_data = _raw_data;
 
-	HCoder coder;
-	coder.decode(m_packed_data);
 	std::string unpacked_raw_data = (std::string&&)(coder.decoded_data());
 
 	//	parse file names, sizes and files' data offset
@@ -124,7 +137,7 @@ void Archive::unpack(const std::string &_raw_data)
 		if(offset == unpacked_raw_data.size())
 		{
 			m_unpacked_data.clear();
-			append_error_message("Format error: incorrect header or no files' data");
+			set_error_message("Format error: incorrect header or no files' data");
 			return;
 		}
 
@@ -141,12 +154,12 @@ void Archive::unpack(const std::string &_raw_data)
 		if(file_end > unpacked_raw_data.size())
 		{
 			m_unpacked_data.clear();
-			append_error_message("Format error: length of file \"" + it->file_name + "\" specified in header exceeds archive's size");
+			set_error_message("Format error: length of file \"" + it->file_name + "\" specified in header exceeds archive's size");
 			return;
 		}
 
 		for(; offset < file_end; ++offset)
-			it->content[file_end - offset] = unpacked_raw_data[offset];
+			it->content[it->content.size() - (file_end - offset)] = unpacked_raw_data[offset];
 
 		++it;
 	}
@@ -154,10 +167,17 @@ void Archive::unpack(const std::string &_raw_data)
 
 void Archive::unpack(std::string&& _raw_data)
 {
+	HCoder coder;
+	coder.decode(_raw_data);
+
+	if(!coder.is_ok())
+	{
+		set_error_message("Archive data was corrupted beyond restorability");
+		return;
+	}
+
 	m_packed_data = (std::string&&)(_raw_data);
 
-	HCoder coder;
-	coder.decode(m_packed_data);
 	std::string unpacked_raw_data = (std::string&&)(coder.decoded_data());
 
 	//	parse file names, sizes and files' data offset
@@ -197,7 +217,7 @@ void Archive::unpack(std::string&& _raw_data)
 		if(offset == unpacked_raw_data.size())
 		{
 			m_unpacked_data.clear();
-			append_error_message("Format error: incorrect header or no files' data");
+			set_error_message("Format error: incorrect header or no files' data");
 			return;
 		}
 
@@ -214,22 +234,15 @@ void Archive::unpack(std::string&& _raw_data)
 		if(file_end > unpacked_raw_data.size())
 		{
 			m_unpacked_data.clear();
-			append_error_message("Format error: length of file \"" + it->file_name + "\" specified in header exceeds archive's size");
+			set_error_message("Format error: length of file \"" + it->file_name + "\" specified in header exceeds archive's size");
 			return;
 		}
 
 		for(; offset < file_end; ++offset)
-			it->content[file_end - offset] = unpacked_raw_data[offset];
+			it->content[it->content.size() - (file_end - offset)] = unpacked_raw_data[offset];
 
 		++it;
 	}
-}
-
-
-void Archive::append_error_message(const std::string &_message)
-{
-	m_error_log += std::to_string(m_errors_count + 1) + _message + '\n';
-	++m_errors_count;
 }
 
 
@@ -247,12 +260,12 @@ const std::list<Archive::File_Data>& Archive::unpacked_data() const
 
 bool Archive::is_ok() const
 {
-	return m_errors_count == 0;
+	return m_error_message.size() == 0;
 }
 
-const std::string& Archive::error_log() const
+const std::string& Archive::error() const
 {
-	return m_error_log;
+	return m_error_message;
 }
 
 

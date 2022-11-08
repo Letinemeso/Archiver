@@ -87,6 +87,8 @@ public:
 	std::string& encoded_data();
 	std::string& decoded_data();
 
+	bool is_ok() const;
+
 };
 
 

@@ -10,10 +10,13 @@
 class Archive final
 {
 public:
-	struct Stub final
-	{
-		std::list<std::string> files_paths;
-	};
+//	struct Stub final
+//	{
+//		std::list<std::string> files_paths;
+//		operator std::list<std::string>&() { return files_paths; }
+//	};
+
+	typedef std::list<std::string> Files_Paths;
 
 public:
 	struct File_Data final
@@ -29,8 +32,10 @@ private:
 	std::list<File_Data> m_unpacked_data;
 	std::string m_packed_data;
 
-	std::string m_error_log;
-	unsigned int m_errors_count = 0;
+	std::string m_error_message;
+
+private:
+	void set_error_message(const std::string& _message);
 
 public:
 	Archive();
@@ -48,14 +53,12 @@ public:
 	void unpack(const std::string& _raw_data);
 	void unpack(std::string&& _raw_data);
 
-	void append_error_message(const std::string& _message);
-
 public:
 	const std::string& packed_data() const;
 	const std::list<File_Data>& unpacked_data() const;
 
 	bool is_ok() const;
-	const std::string& error_log() const;
+	const std::string& error() const;
 
 };
 

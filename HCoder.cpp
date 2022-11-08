@@ -332,6 +332,12 @@ std::string& HCoder::decoded_data()
 }
 
 
+bool HCoder::is_ok() const
+{
+	return m_blocks != nullptr;
+}
+
+
 
 
 

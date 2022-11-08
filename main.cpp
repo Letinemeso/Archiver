@@ -1,6 +1,8 @@
 #include <iostream>
 
 #include "HCoder.h"
+#include "Archive.h"
+#include "Archive_Manager.h"
 
 void print_binary(char c)
 {
@@ -11,69 +13,66 @@ void print_binary(char c)
 
 int main()
 {
-	std::string str;
-//	str += 180;
-//	str += 153;
-//	str += 2;
-//	str += 12;
-//	str += 99;
-//	str += "\0";
-	str = "amnalanlskbk12321snkvlsndlkb     ss";
+	Archive_Manager mgr;
 
-	HCoder HCoder;
+//	Archive arc;
 
-//	HCoder.print_blocks();
+//	arc.add_raw_file_data("test.txt", "some data");
+//	arc.pack();
 
-	HCoder.encode(str);
+//	if(arc.error().size() > 0)
+//	{
+//		std::cout << arc.error() << "\n";
+//		return 1;
+//	}
 
-	auto raw = HCoder.decoded_data();
-
-	std::cout << "raw: " << raw << "\n";
-
-	for(unsigned int i = 0; i < raw.size(); ++i)
-		std::cout << (int)(unsigned char)(raw[i]) << " ";
-	std::cout << "\n\n";
-
-	std::cout << "raw binary:\n";
-	for(unsigned int i = 0; i < raw.size(); ++i)
-		print_binary(raw[i]);
-	std::cout << "\n";
+//	if(!mgr.save(arc, "test"))
+//	{
+//		std::cout << mgr.error_log() << "\n";
+//		return 1;
+//	}
 
 
-	auto encoded = HCoder.encoded_data();
-
-	std::cout << "encoded: ";
-	for(unsigned int i = 0; i < encoded.size(); ++i)
-		std::cout << encoded[i];
-	std::cout << "\n";
-
-	for(unsigned int i = 0; i < encoded.size(); ++i)
-		std::cout << (int)(unsigned char)(encoded[i]) << " ";
-	std::cout << "\n\n";
-
-	std::cout << "encoded binary:\n";
-	for(unsigned int i = 0; i < encoded.size(); ++i)
-		print_binary(encoded[i]);
-	std::cout << "\n";
-
-	HCoder.decode(encoded);
 
 
-	std::string decoded = HCoder.decoded_data();
+//	Archive::Files_Paths paths;
+//	paths.push_back("../test.txt");
+//	paths.push_back("../test_2.txt");
 
-	std::cout << "decoded: ";
-	for(unsigned int i = 0; i < decoded.size(); ++i)
-		std::cout << decoded[i];
-	std::cout << "\n";
+//	Archive* arc = mgr.pack_files(paths);
+//	if(!arc)
+//	{
+//		std::cout << mgr.error_log() << "\n";
+//		return 1;
+//	}
 
-	for(unsigned int i = 0; i < decoded.size(); ++i)
-		std::cout << (int)(unsigned char)(decoded[i]) << " ";
-	std::cout << "\n\n";
+//	mgr.save(*arc, "archive");
 
-	std::cout << "decoded binary:\n";
-	for(unsigned int i = 0; i < decoded.size(); ++i)
-		print_binary(decoded[i]);
-	std::cout << "\n";
+//	delete arc;
+
+
+
+
+	Archive* arc = mgr.load("archive");
+
+	if(!arc)
+	{
+		std::cout << mgr.error_log() << "\n";
+		return 1;
+	}
+
+	if(!mgr.unpack_files(*arc, "../../"))
+	{
+		std::cout << mgr.error_log() << "\n";
+		return 1;
+	}
+
+	delete arc;
+
+
+
+
+
 
 	return 0;
 }

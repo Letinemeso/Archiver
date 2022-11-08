@@ -1,15 +1,15 @@
-#ifndef DATA_BLOCK_H
-#define DATA_BLOCK_H
+#ifndef HCODER_H
+#define HCODER_H
 
 #include <iostream>
 
 
-class Archive final
+class HCoder final
 {
 private:
 	using uint16 = short unsigned int;
 
-public:
+private:
 	class Block final
 	{
 	private:
@@ -55,33 +55,39 @@ public:
 	};
 
 private:
+	std::string m_raw_data;
+	std::string m_encoded_data;
+
 	uint16* m_blocks = nullptr;
 	unsigned int m_blocks_amount = 0;
 
 private:
-	Block operator[](unsigned int _index);
-	bool get_raw_data_bit(const unsigned char* _raw_data, unsigned int _bit_index) const;
+	Block block(unsigned int _index);
+	bool get_raw_data_bit(const char* _raw_data, unsigned int _bit_index) const;
 	unsigned int block_index_from_raw(unsigned int _index) const;
+
+	bool try_fix_block(uint16& _block);
 	void setup_block(unsigned int _index);
 
-public:
-	Archive(const unsigned char* _raw_data, unsigned int _size);
 
-	void print_blocks()
-	{
-		for(unsigned int i=0; i<m_blocks_amount; ++i)
-		{
-			for(unsigned int x = 0; x < 4; ++x)
-			{
-				for(unsigned int y = 0; y < 4; ++y)
-					std::cout << (*this)[i][x][y] << " ";
-				std::cout << "\n";
-			}
-			std::cout << "\n";
-		}
-	}
+public:
+	HCoder();
+	HCoder(const HCoder& _other);
+	HCoder(HCoder&& _other);
+	~HCoder();
+
+	void clear();
+
+	void encode(const std::string& _data);
+	void decode(const std::string& _data);
+
+public:
+	const std::string& encoded_data() const;
+	const std::string& decoded_data() const;
+	std::string& encoded_data();
+	std::string& decoded_data();
 
 };
 
 
-#endif // DATA_BLOCK_H
+#endif // HCODER_H

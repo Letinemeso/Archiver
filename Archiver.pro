@@ -4,8 +4,10 @@ CONFIG -= app_bundle
 CONFIG -= qt
 
 SOURCES += \
-        Data_Block.cpp \
+        Archive.cpp \
+        HCoder.cpp \
         main.cpp
 
 HEADERS += \
-	Data_Block.h
+	Archive.h \
+	HCoder.h

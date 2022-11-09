@@ -3,6 +3,7 @@
 #include "HCoder.h"
 #include "Archive.h"
 #include "Archive_Manager.h"
+#include "Args_Parser.h"
 
 void print_binary(char c)
 {
@@ -11,8 +12,44 @@ void print_binary(char c)
 	std::cout << "\n";
 }
 
-int main()
+int main(int args_count, char** args)
 {
+	std::string args_string;
+
+	for(int i=0; i<args_count; ++i)
+	{
+		args_string.append(args[i]);
+		args_string += ' ';
+	}
+
+//	args_string = "./Archiver --file -ass.txt ";
+
+	Args_Parser ap;
+
+	ap.parse(args_string);
+
+//	const Args_Parser::Values* values = ap.values("--ass");
+	const Args_Parser::Args& a = ap.args();
+
+	for(const auto& arg : a)
+	{
+		std::cout << "|" << arg.first << "|\n";
+		for(const auto& val : arg.second)
+			std::cout << "\t" << val << "\n";
+		std::cout << "\n";
+	}
+
+
+
+
+
+
+
+
+
+	return 0;
+
+
 	Archive_Manager mgr;
 
 //	Archive arc;

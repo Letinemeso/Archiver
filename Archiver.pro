@@ -6,10 +6,13 @@ CONFIG -= qt
 SOURCES += \
         Archive.cpp \
         Archive_Manager.cpp \
+        Args_Parser.cpp \
         HCoder.cpp \
         main.cpp
 
 HEADERS += \
+	Actions.h \
 	Archive.h \
 	Archive_Manager.h \
+	Args_Parser.h \
 	HCoder.h

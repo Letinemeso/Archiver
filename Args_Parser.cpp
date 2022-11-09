@@ -1,22 +1,8 @@
 #include "Args_Parser.h"
 
 
-Args_Parser::Args_Parser()
+void Args_Parser::parse_usual_args(const std::string& _raw_data)
 {
-
-}
-
-Args_Parser::~Args_Parser()
-{
-
-}
-
-
-
-void Args_Parser::parse(const std::string& _raw_data)
-{
-	m_args.clear();
-
 	std::string current_arg, current_value;
 	std::list<std::string> current_parsed_values;
 
@@ -70,12 +56,61 @@ void Args_Parser::parse(const std::string& _raw_data)
 		}
 	}
 
-	if(current_arg.size() > 0 && (current_value.size() > 0 || current_parsed_values.size() > 0))
+	if(current_arg.size() > 0)
 	{
 		if(current_value.size() > 0)
 			current_parsed_values.push_back((std::string&&)current_value);
 		m_args.emplace((std::string&&)current_arg, (Values&&)current_parsed_values);
 	}
+}
+
+
+
+Args_Parser::Args_Parser()
+{
+
+}
+
+Args_Parser::~Args_Parser()
+{
+
+}
+
+
+
+void Args_Parser::parse(char **_args, unsigned int _count)
+{
+	m_args.clear();
+
+	std::string usual_args_str;
+
+	for(unsigned int i=0; i<_count; ++i)
+	{
+		const char* curr_str = _args[i];
+		unsigned int length = strlen(curr_str);
+		unsigned int equals_pos = 0;
+		for(; equals_pos < length; ++equals_pos)
+			if(curr_str[equals_pos] == '=')
+				break;
+
+		if(equals_pos == length)
+		{
+			usual_args_str += curr_str;
+			usual_args_str += ' ';
+			continue;
+		}
+
+		std::string arg, value;
+		for(unsigned int i=0; i<equals_pos; ++i)
+			arg += curr_str[i];
+		for(unsigned int i=equals_pos + 1; i < length; ++i)
+			value += curr_str[i];
+
+		Args::iterator it = m_args.emplace(arg, Values()).first;
+		it->second.push_back(value);
+	}
+
+	parse_usual_args(usual_args_str);
 }
 
 
@@ -92,6 +127,21 @@ const Args_Parser::Values* Args_Parser::values(const std::string& _key) const
 		return nullptr;
 
 	return &it->second;
+}
+
+const std::string* Args_Parser::value(const std::string &_key, unsigned int _index) const
+{
+	const Values* list = values(_key);
+	if(list == nullptr)
+		return nullptr;
+	if(list->size() >= _index)
+		return nullptr;
+
+	Values::const_iterator it = list->cbegin();
+	for(unsigned int i=0; i<_index; ++i)
+		++it;
+
+	return &(*it);
 }
 
 

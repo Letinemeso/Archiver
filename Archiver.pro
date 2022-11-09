@@ -11,7 +11,7 @@ SOURCES += \
         main.cpp
 
 HEADERS += \
-	Actions.h \
+	Action_Processor.h \
 	Archive.h \
 	Archive_Manager.h \
 	Args_Parser.h \

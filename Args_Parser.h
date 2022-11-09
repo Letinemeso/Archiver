@@ -2,6 +2,7 @@
 #define ARGS_PARSER_H
 
 #include <string>
+#include <string.h>
 #include <map>
 #include <list>
 
@@ -23,16 +24,20 @@ public:
 private:
 	Args m_args;
 
+private:
+	void parse_usual_args(const std::string& _raw_data);
+
 public:
 	Args_Parser();
 	~Args_Parser();
 
 public:
-	void parse(const std::string& _raw_data);
+	void parse(char** _args, unsigned int _count);
 
 public:
 	const Args& args() const;
 	const Values* values(const std::string& _key) const;
+	const std::string* value(const std::string& _key, unsigned int _index) const;
 
 };
 

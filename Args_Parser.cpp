@@ -134,7 +134,7 @@ const std::string* Args_Parser::value(const std::string &_key, unsigned int _ind
 	const Values* list = values(_key);
 	if(list == nullptr)
 		return nullptr;
-	if(list->size() >= _index)
+	if(list->size() <= _index)
 		return nullptr;
 
 	Values::const_iterator it = list->cbegin();

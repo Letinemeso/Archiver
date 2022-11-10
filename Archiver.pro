@@ -4,6 +4,7 @@ CONFIG -= app_bundle
 CONFIG -= qt
 
 SOURCES += \
+        Action_Processor.cpp \
         Archive.cpp \
         Archive_Manager.cpp \
         Args_Parser.cpp \

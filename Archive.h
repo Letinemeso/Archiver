@@ -1,6 +1,7 @@
 #ifndef ARCHIVE_H
 #define ARCHIVE_H
 
+#include <map>
 #include <list>
 #include <string>
 
@@ -10,26 +11,10 @@
 class Archive final
 {
 public:
-//	struct Stub final
-//	{
-//		std::list<std::string> files_paths;
-//		operator std::list<std::string>&() { return files_paths; }
-//	};
-
-	typedef std::list<std::string> Files_Paths;
-
-public:
-	struct File_Data final
-	{
-		std::string file_name;
-		std::string content;
-
-		File_Data(const std::string& _file_name, const std::string& _content) : file_name(_file_name), content(_content) { }
-		File_Data(const std::string& _file_name, std::string&& _content) : file_name(_file_name), content((std::string&&)_content) { }
-	};
+	typedef std::map<std::string, std::string> Files_Data;
 
 private:
-	std::list<File_Data> m_unpacked_data;
+	Files_Data m_unpacked_data;
 	std::string m_packed_data;
 
 	std::string m_error_message;
@@ -48,14 +33,18 @@ public:
 
 	void add_raw_file_data(const std::string& _file_name, const std::string& _data);
 	void add_raw_file_data(const std::string& _file_name, std::string&& _data);
+	void remove_raw_file_data(const std::string& _file_name);
 	void pack();
 
 	void unpack(const std::string& _raw_data);
 	void unpack(std::string&& _raw_data);
 
 public:
+	std::string& packed_data();
+	Files_Data& unpacked_data();
 	const std::string& packed_data() const;
-	const std::list<File_Data>& unpacked_data() const;
+	const Files_Data& unpacked_data() const;
+	const std::string* unpacked_data(const std::string& _file_name) const;
 
 	bool is_ok() const;
 	const std::string& error() const;

@@ -3,6 +3,9 @@ CONFIG += console c++11
 CONFIG -= app_bundle
 CONFIG -= qt
 
+LIBS += -static-libstdc++ \
+    -static-libgcc
+
 SOURCES += \
         Action_Processor.cpp \
         Archive.cpp \

@@ -303,10 +303,6 @@ void HCoder::decode(const std::string& _data)
 		char mask = 1 << (i % 8);
 		m_raw_data[i / 8] += mask;
 	}
-
-
-	if(m_raw_data[m_raw_data.size() - 1] == 0)
-		m_raw_data.pop_back();
 }
 
 

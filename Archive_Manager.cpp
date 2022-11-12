@@ -45,7 +45,7 @@ Archive* Archive_Manager::pack_files(const Files_Paths& _files_to_pack)
 	std::list<std::string>::const_iterator it = _files_to_pack.cbegin();
 	while(it != _files_to_pack.cend())
 	{
-		std::ifstream test(*it, std::ios::in);
+		std::ifstream test(*it, std::ios::binary);
 		if(!test.is_open())
 		{
 			all_files_exist = false;
@@ -67,7 +67,7 @@ Archive* Archive_Manager::pack_files(const Files_Paths& _files_to_pack)
 	{
 		std::string actual_file_name = parse_file_name(*it);
 
-		std::ifstream file(*it, std::ios::in);
+		std::ifstream file(*it, std::ios::binary);
 
 		std::string content;
 		file.seekg(0, std::ios::end);
@@ -75,7 +75,13 @@ Archive* Archive_Manager::pack_files(const Files_Paths& _files_to_pack)
 		file.seekg(0, std::ios::beg);
 
 		for(unsigned int i=0; i<content.size(); ++i)
-			content[i] = file.get();
+		{
+			file.seekg(i, std::ios::beg);
+			int c = file.peek();
+			if(c == -1)
+				c = 26;
+			content[i] = (char)c;
+		}
 
 		file.close();
 
@@ -110,7 +116,7 @@ bool Archive_Manager::append_files(Archive &_append_to, const Files_Paths &_file
 	std::list<std::string>::const_iterator it = _files_to_append.cbegin();
 	while(it != _files_to_append.cend())
 	{
-		std::ifstream test(*it, std::ios::in);
+		std::ifstream test(*it, std::ios::binary);
 		if(!test.is_open())
 		{
 			all_files_exist = false;
@@ -130,7 +136,7 @@ bool Archive_Manager::append_files(Archive &_append_to, const Files_Paths &_file
 	{
 		std::string actual_file_name = parse_file_name(*it);
 
-		std::ifstream file(*it, std::ios::in);
+		std::ifstream file(*it, std::ios::binary);
 
 		std::string content;
 		file.seekg(0, std::ios::end);
@@ -138,7 +144,13 @@ bool Archive_Manager::append_files(Archive &_append_to, const Files_Paths &_file
 		file.seekg(0, std::ios::beg);
 
 		for(unsigned int i=0; i<content.size(); ++i)
-			content[i] = file.get();
+		{
+			file.seekg(i, std::ios::beg);
+			int c = file.peek();
+			if(c == -1)
+				c = 26;
+			content[i] = (char)c;
+		}
 
 		file.close();
 
@@ -271,7 +283,7 @@ bool Archive_Manager::unpack_files(const Archive &_archive, const std::string& _
 	Archive::Files_Data::const_iterator it = _archive.unpacked_data().cbegin();
 	while(it != _archive.unpacked_data().cend())
 	{
-		std::ofstream file(path + it->first, std::ios::trunc);
+		std::ofstream file(path + it->first, std::ios::binary);
 		if(!file.is_open())
 		{
 			append_error_message("Directory \"" + _where + "\" does not exist");
@@ -337,7 +349,7 @@ bool Archive_Manager::unpack_files(const Archive &_archive, const Files_Paths& _
 			continue;
 		}
 
-		std::ofstream file(*it, std::ios::trunc);
+		std::ofstream file(*it, std::ios::binary);
 		if(!file.is_open())
 		{
 			append_error_message("Could not open or create file \"" + *it + ".haf\"");
@@ -361,7 +373,7 @@ Archive* Archive_Manager::load(const std::string &_file_name)
 
 	std::string path = _file_name + ".haf";
 
-	std::ifstream file(path, std::ios::in);
+	std::ifstream file(path, std::ios::binary);
 	if(!file.is_open())
 	{
 		append_error_message("Archive file \"" + path + "\" not found");
@@ -374,7 +386,13 @@ Archive* Archive_Manager::load(const std::string &_file_name)
 	file.seekg(0, std::ios::beg);
 
 	for(unsigned int i=0; i<content.size(); ++i)
-		content[i] = file.get();
+	{
+		file.seekg(i, std::ios::beg);
+		int c = file.peek();
+		if(c == -1)
+			c = 26;
+		content[i] = (char)c;
+	}
 
 	file.close();
 
@@ -404,7 +422,7 @@ bool Archive_Manager::save(const Archive &_archive, const std::string &_file_nam
 
 	std::string path = _file_name + ".haf";
 
-	std::ofstream file(path, std::ios::trunc);
+	std::ofstream file(path, std::ios::binary);
 	if(!file.is_open())
 	{
 		append_error_message("Could not open \"" + path + "\". Make sure specified directory exists");

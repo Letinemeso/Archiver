@@ -13,7 +13,6 @@ public:
 
 private:
 	std::string m_error_log;
-	unsigned int m_errors_count = 0;
 
 private:
 	void clear_error_log();

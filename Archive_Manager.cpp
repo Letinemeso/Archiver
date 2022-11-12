@@ -4,13 +4,11 @@
 void Archive_Manager::clear_error_log()
 {
 	m_error_log.clear();
-	m_errors_count = 0;
 }
 
 void Archive_Manager::append_error_message(const std::string &_message)
 {
 	m_error_log += _message + '\n';
-	++m_errors_count;
 }
 
 
@@ -260,7 +258,15 @@ Archive* Archive_Manager::merge_archives(const Files_Paths& _archives)
 		++it;
 	}
 
-	return result;
+	result->pack();
+
+	if(result->is_ok())
+		return result;
+
+	append_error_message(result->error());
+	delete result;
+
+	return nullptr;
 }
 
 bool Archive_Manager::unpack_files(const Archive &_archive, const std::string& _where)
@@ -342,12 +348,6 @@ bool Archive_Manager::unpack_files(const Archive &_archive, const Files_Paths& _
 		std::string file_name = parse_file_name(*it);
 
 		const std::string* file_data = _archive.unpacked_data(file_name);
-		if(file_data == nullptr)
-		{
-			append_error_message("File \"" + file_name + "\" not found in specified archive");
-			++it;
-			continue;
-		}
 
 		std::ofstream file(*it, std::ios::binary);
 		if(!file.is_open())

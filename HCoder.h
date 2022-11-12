@@ -87,22 +87,6 @@ public:
 	std::string& encoded_data();
 	std::string& decoded_data();
 
-	void print_block_view()
-	{
-		for(unsigned int i=0; i<m_blocks_amount; ++i)
-		{
-			for(unsigned int x=0; x < 4; ++x)
-			{
-				for(unsigned int y=0; y < 4; ++y)
-				{
-					std::cout << block(i)[x][y] << ' ';
-				}
-				std::cout << "\n";
-			}
-			std::cout << "\n";
-		}
-	}
-
 	bool is_ok() const;
 
 };

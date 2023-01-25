@@ -11,6 +11,7 @@ SOURCES += \
         Archive.cpp \
         Archive_Manager.cpp \
         Args_Parser.cpp \
+        File.cpp \
         HCoder.cpp \
         main.cpp
 
@@ -19,4 +20,5 @@ HEADERS += \
 	Archive.h \
 	Archive_Manager.h \
 	Args_Parser.h \
+	File.h \
 	HCoder.h

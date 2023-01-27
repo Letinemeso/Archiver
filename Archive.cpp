@@ -7,326 +7,203 @@ void Archive::set_error_message(const std::string &_message)
 }
 
 
-
-Archive::Archive()
+std::string Archive::M_parse_value_before_slash(const std::string &_str, unsigned int _offset)
 {
-
+	unsigned int i = _offset;
+	for(; i < _str.size(); ++i)
+		if(_str[i] == '/')
+			break;
+	return _str.substr(_offset, i - _offset);
 }
 
-Archive::Archive(const Archive& _other)
+
+void Archive::M_unpack_to_temporary_file()
 {
-	m_unpacked_data = _other.m_unpacked_data;
-	m_packed_data = _other.m_packed_data;
+	if(!m_packed_file.exists())
+		return;
+
+	m_temporary_unpacked_file.set_path(m_packed_file.get_path() + ".temp");
+	m_temporary_unpacked_file.clear();
+
+	HCoder coder;
+
+	unsigned int raw_offset = 0;
+	std::string chunk = m_packed_file.extract_block(raw_offset, m_read_chunk_size);
+	while(chunk.size() > 0)
+	{
+		coder.decode(chunk);
+		if(!coder.is_ok())
+		{
+			set_error_message("Archive data was corrupted beyond restorability");
+			std::remove(m_temporary_unpacked_file.get_path().c_str());
+			return;
+		}
+		m_temporary_unpacked_file.append_block(coder.decoded_data());
+		raw_offset += m_read_chunk_size;
+		chunk = m_packed_file.extract_block(raw_offset, m_read_chunk_size);
+	}
 }
+
+void Archive::M_parse_content()
+{
+	std::string header_length_str = m_temporary_unpacked_file.extract_block(0, 10);	//	10 - max length of unsigned int number as string
+	for(unsigned int i=0; i<10; ++i)
+	{
+		if(header_length_str[i] == '\n')
+		{
+			header_length_str = header_length_str.substr(0, i);
+			break;
+		}
+	}
+	unsigned int header_length = std::stoi(header_length_str);
+
+	std::string header_str = m_temporary_unpacked_file.extract_block(header_length_str.size() + 1, header_length);
+
+	m_content.clear();
+
+	std::string chunk;
+	unsigned int offset = 0;
+	unsigned int file_offset = header_length_str.size() + 1 + header_length;
+	while(offset < header_length)
+	{
+		std::string name, size_str;
+
+		name = M_parse_value_before_slash(header_str, offset);
+		offset += name.size() + 1;
+		size_str = M_parse_value_before_slash(header_str, offset);
+		offset += size_str.size() + 1;
+		const unsigned int size = std::stoi(size_str);
+
+		File_Data data;
+		data.file = m_temporary_unpacked_file;
+		data.offset = file_offset;
+		data.size = size;
+		data.file_name = name;
+
+		file_offset += size;
+
+		m_content.push_back(data);
+	}
+}
+
+
 
 Archive::Archive(Archive&& _other)
 {
-	m_unpacked_data = (Files_Data&&)(_other.m_unpacked_data);
-	m_packed_data = (std::string&&)(_other.m_packed_data);
+	m_packed_file = (File&&)_other.m_packed_file;
+	m_temporary_unpacked_file = (File&&)_other.m_temporary_unpacked_file;
+	m_content = (Content_t&&)_other.m_content;
+}
+
+Archive::Archive(const std::string& _path)
+{
+	m_packed_file.set_path(_path);
+
+	if(!m_packed_file.exists())
+		m_packed_file.clear();
+
+	m_temporary_unpacked_file.set_path(m_packed_file.get_path() + ".temp");
+	m_temporary_unpacked_file.clear();
+
+	if(m_packed_file.length() == 0)
+		return;
+
+	M_unpack_to_temporary_file();
+	M_parse_content();
 }
 
 Archive::~Archive()
 {
-
+	if(m_temporary_unpacked_file.exists())
+		std::remove(m_temporary_unpacked_file.get_path().c_str());
 }
 
 
 
-void Archive::reset()
+void Archive::append_files(const Content_t& _what)
 {
-	m_unpacked_data.clear();
-	m_packed_data.clear();
-	m_error_message.clear();
-}
-
-
-void Archive::add_raw_file_data(const std::string& _file_name, const std::string &_data)
-{
-	Files_Data::iterator it = m_unpacked_data.find(_file_name);
-	if(it != m_unpacked_data.end())
-		it->second = _data;
-	else
-		m_unpacked_data.emplace(_file_name, _data);
-}
-
-void Archive::add_raw_file_data(const std::string& _file_name, std::string&& _data)
-{
-	Files_Data::iterator it = m_unpacked_data.find(_file_name);
-	if(it != m_unpacked_data.end())
-		it->second = (std::string&&)_data;
-	else
-		m_unpacked_data.emplace(_file_name, (std::string&&)_data);
-}
-
-void Archive::remove_raw_file_data(const std::string &_file_name)
-{
-	Files_Data::iterator it = m_unpacked_data.find(_file_name);
-	if(it == m_unpacked_data.end())
-		return;
-	m_unpacked_data.erase(it);
-}
-
-
-void Archive::pack()
-{
-	if(m_unpacked_data.size() == 0)
+	if(_what.size() < 0)
 	{
-		set_error_message("No unpacked data specified");
+		set_error_message("No data specified");
 		return;
 	}
 
-	std::string data_to_pack;
+	m_packed_file.clear();
 
-	//	header
-	Files_Data::const_iterator it = m_unpacked_data.cbegin();
-	while(it != m_unpacked_data.cend())
+
+	std::rename(m_temporary_unpacked_file.get_path().c_str(), (m_temporary_unpacked_file.get_path() + ".old").c_str());
+	m_temporary_unpacked_file.set_path(m_temporary_unpacked_file.get_path() + ".old");
+
+	File temp_new;
+	temp_new.clear();
+
+	std::string header_str;
+	for(auto it = m_content.cbegin(); it != m_content.cend(); ++it)
 	{
-		data_to_pack += it->first + '\n';
-		data_to_pack += std::to_string(it->second.size()) + '\n';
-		++it;
+		header_str += it->file_name;
+		header_str += '/';
+		header_str += std::to_string(it->file.length());
+		header_str += '/';
 	}
-	data_to_pack += '\n';
-
-	//	files_data
-	it = m_unpacked_data.cbegin();
-	while(it != m_unpacked_data.cend())
+	for(auto it = _what.cbegin(); it != _what.cend(); ++it)
 	{
-		data_to_pack += it->second;
-		++it;
+		header_str += it->file_name;
+		header_str += '/';
+		header_str += std::to_string(it->file.length());
+		header_str += '/';
+	}
+
+	temp_new.append_block(std::to_string(header_str.size()) + "\n");
+	temp_new.append_block(header_str);
+
+	for(auto it = m_content.cbegin(); it != m_content.cend(); ++it)
+	{
+		unsigned int raw_offset = it->offset;
+		std::string chunk = it->file.extract_block(raw_offset, m_write_chunk_size);
+		while(chunk.size() > 0)
+		{
+			temp_new.append_block(chunk);
+			raw_offset += m_write_chunk_size;
+			chunk = it->file.extract_block(raw_offset, m_write_chunk_size);
+		}
+	}
+	for(auto it = _what.cbegin(); it != _what.cend(); ++it)
+	{
+		unsigned int raw_offset = 0;
+		std::string chunk = it->file.extract_block(raw_offset, m_write_chunk_size);
+		while(chunk.size() > 0)
+		{
+			temp_new.append_block(chunk);
+			raw_offset += m_write_chunk_size;
+			chunk = it->file.extract_block(raw_offset, m_write_chunk_size);
+		}
 	}
 
 	HCoder coder;
-	coder.encode(data_to_pack);
-	m_packed_data = (std::string&&)(coder.encoded_data());
-}
 
-
-void Archive::unpack(const std::string &_raw_data)
-{
-	m_unpacked_data.clear();
-
-	HCoder coder;
-	coder.decode(_raw_data);
-
-	if(!coder.is_ok())
+	unsigned int raw_offset = 0;
+	std::string chunk = m_temporary_unpacked_file.extract_block(raw_offset, m_write_chunk_size);
+	while(chunk.size() > 0)
 	{
-		set_error_message("Archive data was corrupted beyond restorability");
-		return;
+		coder.encode(chunk);
+		m_packed_file.append_block(coder.encoded_data());
+		raw_offset += m_write_chunk_size;
+		chunk = m_temporary_unpacked_file.extract_block(raw_offset, m_write_chunk_size);
 	}
 
-	m_packed_data = _raw_data;
+	M_parse_content();
+}
 
-	std::string unpacked_raw_data = (std::string&&)(coder.decoded_data());
 
-	using StrPair_List = std::list<std::pair<std::string, std::string>>;
-	StrPair_List files_in_order;
-
-	//	parse file names, sizes and files' data offset
-	unsigned int offset = 0;
-	while(true)
+void Archive::unpack()
+{
+	for(auto it = m_content.cbegin(); it != m_content.cend(); ++it)
 	{
-		if(unpacked_raw_data[offset] == '\n')
-		{
-			++offset;
-			break;
-		}
+		File file(it->file_name);
+		file.clear();
 
-		std::string file_name, file_length_as_string;
-
-		//	parse file name
-		for(; offset < unpacked_raw_data.size(); ++offset)
-		{
-			if(unpacked_raw_data[offset] == '\n')
-			{
-				++offset;
-				break;
-			}
-			file_name += unpacked_raw_data[offset];
-		}
-
-		//	parse file size as string
-		for(; offset < unpacked_raw_data.size(); ++offset)
-		{
-			if(unpacked_raw_data[offset] == '\n')
-			{
-				++offset;
-				break;
-			}
-			file_length_as_string += unpacked_raw_data[offset];
-		}
-
-		if(offset == unpacked_raw_data.size())
-		{
-			m_unpacked_data.clear();
-			set_error_message("Format error: incorrect header or no files' data");
-			return;
-		}
-
-		files_in_order.push_back({});
-		StrPair_List::iterator it = files_in_order.end();
-		--it;
-
-		it->first = (std::string&&)file_name;
-		it->second.resize(std::stoi(file_length_as_string));
+		file.append_block_from_other(it->file, it->offset, it->size);
 	}
-
-	StrPair_List::iterator it = files_in_order.begin();
-	while(it != files_in_order.end())
-	{
-		unsigned int file_end = offset + it->second.size();
-		if(file_end > unpacked_raw_data.size())
-		{
-			m_unpacked_data.clear();
-			set_error_message("Format error: length of file \"" + it->first + "\" specified in header exceeds archive's size");
-			return;
-		}
-
-		for(; offset < file_end; ++offset)
-			it->second[it->second.size() - (file_end - offset)] = unpacked_raw_data[offset];
-
-		++it;
-	}
-
-	it = files_in_order.begin();
-	while(it != files_in_order.end())
-	{
-		m_unpacked_data.emplace((std::string&&)it->first, (std::string&&)it->second);
-		++it;
-	}
-}
-
-void Archive::unpack(std::string&& _raw_data)
-{
-	HCoder coder;
-	coder.decode(_raw_data);
-
-	if(!coder.is_ok())
-	{
-		set_error_message("Archive data was corrupted beyond restorability");
-		return;
-	}
-
-	m_packed_data = (std::string&&)(_raw_data);
-
-	std::string unpacked_raw_data = (std::string&&)(coder.decoded_data());
-
-	using StrPair_List = std::list<std::pair<std::string, std::string>>;
-	StrPair_List files_in_order;
-
-	//	parse file names, sizes and files' data offset
-	unsigned int offset = 0;
-	while(true)
-	{
-		if(unpacked_raw_data[offset] == '\n')
-		{
-			++offset;
-			break;
-		}
-
-		std::string file_name, file_length_as_string;
-
-		//	parse file name
-		for(; offset < unpacked_raw_data.size(); ++offset)
-		{
-			if(unpacked_raw_data[offset] == '\n')
-			{
-				++offset;
-				break;
-			}
-			file_name += unpacked_raw_data[offset];
-		}
-
-		//	parse file size as string
-		for(; offset < unpacked_raw_data.size(); ++offset)
-		{
-			if(unpacked_raw_data[offset] == '\n')
-			{
-				++offset;
-				break;
-			}
-			file_length_as_string += unpacked_raw_data[offset];
-		}
-
-		if(offset == unpacked_raw_data.size())
-		{
-			m_unpacked_data.clear();
-			set_error_message("Format error: incorrect header or no files' data");
-			return;
-		}
-
-		files_in_order.push_back({});
-		StrPair_List::iterator it = files_in_order.end();
-		--it;
-
-		it->first = (std::string&&)file_name;
-		it->second.resize(std::stoi(file_length_as_string));
-	}
-
-	StrPair_List::iterator it = files_in_order.begin();
-	while(it != files_in_order.end())
-	{
-		unsigned int file_end = offset + it->second.size();
-		if(file_end > unpacked_raw_data.size())
-		{
-			m_unpacked_data.clear();
-			set_error_message("Format error: length of file \"" + it->first + "\" specified in header exceeds archive's size");
-			return;
-		}
-
-		for(; offset < file_end; ++offset)
-			it->second[it->second.size() - (file_end - offset)] = unpacked_raw_data[offset];
-
-		++it;
-	}
-
-	it = files_in_order.begin();
-	while(it != files_in_order.end())
-	{
-		m_unpacked_data.emplace((std::string&&)it->first, (std::string&&)it->second);
-		++it;
-	}
-}
-
-
-
-std::string& Archive::packed_data()
-{
-	return m_packed_data;
-}
-
-Archive::Files_Data& Archive::unpacked_data()
-{
-	return m_unpacked_data;
-}
-
-const std::string& Archive::packed_data() const
-{
-	return m_packed_data;
-}
-
-const Archive::Files_Data& Archive::unpacked_data() const
-{
-	return m_unpacked_data;
-}
-
-const std::string* Archive::unpacked_data(const std::string& _file_name) const
-{
-	Files_Data::const_iterator it = m_unpacked_data.find(_file_name);
-	if(it == m_unpacked_data.cend())
-		return nullptr;
-
-	return &it->second;
-}
-
-
-bool Archive::is_ok() const
-{
-	return m_error_message.size() == 0;
-}
-
-const std::string& Archive::error() const
-{
-	return m_error_message;
 }
 
 

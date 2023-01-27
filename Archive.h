@@ -6,48 +6,59 @@
 #include <string>
 
 #include "HCoder.h"
+#include "File.h"
 
 
 class Archive final
 {
 public:
-	typedef std::map<std::string, std::string> Files_Data;
+	struct File_Data
+	{
+		File file;
+		unsigned int offset = 0;
+		unsigned int size = 0;
+		std::string file_name;
+	};
+
+	typedef std::list<File_Data> Content_t;
 
 private:
-	Files_Data m_unpacked_data;
-	std::string m_packed_data;
+	File m_packed_file;
+	File m_temporary_unpacked_file;
 
+	Content_t m_content;
+
+	static constexpr unsigned int m_write_chunk_size = 11 * 1;	//	hamming encoding uses additional 5 bits for every 11 bits of real data
+	static constexpr unsigned int m_read_chunk_size = 16 * 1;
+
+private:
 	std::string m_error_message;
 
 private:
 	void set_error_message(const std::string& _message);
 
+private:
+	std::string M_parse_value_before_slash(const std::string& _str, unsigned int _offset);
+
+	void M_unpack_to_temporary_file();
+	void M_parse_content();
+
+	void M_copy_chunk_to_file(const File& _from, unsigned int _offset, unsigned int _chink_size, File& _to);
+
 public:
-	Archive();
-	Archive(const Archive& _other);
 	Archive(Archive&& _other);
+	Archive(const std::string& _path);
 	~Archive();
 
 public:
-	void reset();
-
-	void add_raw_file_data(const std::string& _file_name, const std::string& _data);
-	void add_raw_file_data(const std::string& _file_name, std::string&& _data);
-	void remove_raw_file_data(const std::string& _file_name);
-	void pack();
-
-	void unpack(const std::string& _raw_data);
-	void unpack(std::string&& _raw_data);
+	void append_files(const Content_t& _what);
+	void unpack();
 
 public:
-	std::string& packed_data();
-	Files_Data& unpacked_data();
-	const std::string& packed_data() const;
-	const Files_Data& unpacked_data() const;
-	const std::string* unpacked_data(const std::string& _file_name) const;
+	inline const Content_t& content() const { return m_content; };
 
-	bool is_ok() const;
-	const std::string& error() const;
+	inline bool is_ok() const { return m_error_message.size() == 0; }
+	inline const std::string& error() const { return m_error_message; }
 
 };
 

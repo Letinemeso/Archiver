@@ -26,14 +26,12 @@ public:
 	~Archive_Manager() { }
 
 public:
-	Archive* pack_files(const Files_Paths& _files_to_pack);
-	bool append_files(Archive& _append_to, const Files_Paths& _files_to_append);
+	bool pack_files(const Files_Paths& _files_to_pack, const std::string& _archive_name);
+	bool append_files(const std::string& _append_to, const Files_Paths& _files_to_append);
 	bool exclude_files(Archive& _exclude_from, const Files_Paths& _files_to_exclude);
-	Archive* merge_archives(const Files_Paths& _archives);
-	bool unpack_files(const Archive& _archive, const std::string& _where);
+	bool merge_archives(const Files_Paths& _archives);
+	bool unpack_files(const std::string& _archive_path, const std::string& _where);
 	bool unpack_files(const Archive& _archive, const Files_Paths& _files_to_unpack);
-	Archive* load(const std::string& _file_name);
-	bool save(const Archive& _archive, const std::string& _file_name);
 
 	const std::string& error_log() const;
 

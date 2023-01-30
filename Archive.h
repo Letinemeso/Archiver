@@ -28,8 +28,8 @@ private:
 
 	Content_t m_content;
 
-	static constexpr unsigned int m_write_chunk_size = 11 * 1;	//	hamming encoding uses additional 5 bits for every 11 bits of real data
-	static constexpr unsigned int m_read_chunk_size = 16 * 1;
+	static constexpr unsigned int m_write_chunk_size = 11 * 128;	//	hamming encoding uses additional 5 bits for every 11 bits of real data
+	static constexpr unsigned int m_read_chunk_size = 16 * 128;		//	128 - random multiplier to make read blocks bigger
 
 private:
 	std::string m_error_message;
@@ -52,9 +52,14 @@ public:
 
 public:
 	void append_files(const Content_t& _what);
-	void unpack();
+	void unpack(const std::list<std::string>& _files_to_unpack);
+	void exclude_files(const std::list<std::string>& _files_to_exclude);
+
+	void clear();
 
 public:
+	bool contains(const std::string& _file_name) const;
+
 	inline const Content_t& content() const { return m_content; };
 
 	inline bool is_ok() const { return m_error_message.size() == 0; }

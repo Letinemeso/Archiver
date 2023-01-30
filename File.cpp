@@ -104,6 +104,8 @@ void File::append_block_from_other(const File &_other, unsigned int _offset, uns
 		unsigned int bytes_to_read = 1024 < left_to_read ? 1024 : left_to_read;
 
 		append_block(_other.extract_block(offset, bytes_to_read));
+
+		offset += bytes_to_read;
 	}
 }
 

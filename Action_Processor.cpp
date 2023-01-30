@@ -106,100 +106,55 @@ void Action_Processor::create(const std::string &_archive_name, const Archive_Ma
 
 void Action_Processor::print_files_in_archive(const std::string &_archive_name) const
 {
-//	Archive_Manager am;
+	Archive_Manager am;
 
-//	Archive* archive = am.load(_archive_name);
-//	if(archive == nullptr)
-//	{
-//		std::cout << "Some errors occured:\n" << am.error_log() << "\n\n";
-//		return;
-//	}
+	auto list = am.get_archive_content(_archive_name);
 
-//	const Archive::Files_Data& files_data = archive->unpacked_data();
-//	Archive::Files_Data::const_iterator it = files_data.cbegin();
-//	std::cout << "Files in archive \"" << _archive_name << "\":\n";
-//	while(it != files_data.cend())
-//	{
-//		std::cout << "- " << it->first << "\n";
-//		++it;
-//	}
-//	std::cout << "\n";
+	if(list.size() == 0)
+	{
+		std::cout << "Some errors occured:\n" << am.error_log() << "\n\n";
+		return;
+	}
 
-//	delete archive;
+	std::cout << "Archive's content:\n";
+	unsigned int counter = 1;
+	for(const auto& filename : list)
+	{
+		std::cout << counter << ". " << filename << "\n";
+		++counter;
+	}
 }
 
 void Action_Processor::extract_files(const std::string &_archive_name, const Archive_Manager::Files_Paths &_paths) const
 {
 	Archive_Manager am;
 
-	am.unpack_files(_archive_name, "");
-
-	if(am.error_log().size() > 0)
+	if(!am.unpack_files(_archive_name, _paths))
 		std::cout << "Some errors occured:\n" << am.error_log() << "\n\n";
 }
 
 void Action_Processor::append(const std::string &_archive_name, const Archive_Manager::Files_Paths &_paths) const
 {
-//	Archive_Manager am;
+	Archive_Manager am;
 
-//	Archive* archive = am.load(_archive_name);
-//	if(archive == nullptr)
-//	{
-//		std::cout << "Some errors occured:\n" << am.error_log() << "\n\n";
-//		return;
-//	}
-
-//	if(!am.append_files(*archive, _paths))
-//	{
-//		std::cout << "Some errors occured:\n" << am.error_log() << "\n\n";
-//		delete archive;
-//		return;
-//	}
-
-//	if(!am.save(*archive, _archive_name))
-//		std::cout << "Some errors occured:\n" << am.error_log() << "\n\n";
-
-//	delete archive;
+	if(!am.append_files(_archive_name, _paths))
+		std::cout << "Some errors occured:\n" << am.error_log() << "\n\n";
 }
 
 void Action_Processor::exclude(const std::string &_archive_name, const Archive_Manager::Files_Paths &_paths) const
 {
-//	Archive_Manager am;
+	Archive_Manager am;
 
-//	Archive* archive = am.load(_archive_name);
-//	if(archive == nullptr)
-//	{
-//		std::cout << "Some errors occured:\n" << am.error_log() << "\n\n";
-//		return;
-//	}
-
-//	if(!am.exclude_files(*archive, _paths))
-//	{
-//		std::cout << "Some errors occured:\n" << am.error_log() << "\n\n";
-//		delete archive;
-//		return;
-//	}
-
-//	am.save(*archive, _archive_name);
-
-//	delete archive;
+	if(!am.exclude_files(_archive_name, _paths))
+		std::cout << "Some errors occured:\n" << am.error_log() << "\n\n";
 }
 
 void Action_Processor::merge(const std::string &_result_archive_name, const Archive_Manager::Files_Paths &_paths) const
 {
-//	Archive_Manager am;
+	Archive_Manager am;
 
-//	Archive* archive = am.merge_archives(_paths);
-//	if(archive == nullptr)
-//	{
-//		std::cout << "Some errors occured:\n" << am.error_log() << "\n\n";
-//		return;
-//	}
-
-//	if(!am.save(*archive, _result_archive_name))
-//		std::cout << "Some errors occured:\n" << am.error_log() << "\n\n";
-
-//	delete archive;
+	if(!am.merge_archives(_result_archive_name, _paths))
+		std::cout << "Some errors occured:\n" << am.error_log() << "\n\n";
 }
 
 void Action_Processor::print_help_message() const

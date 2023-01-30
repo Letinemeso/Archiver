@@ -122,7 +122,7 @@ Archive::~Archive()
 
 void Archive::append_files(const Content_t& _what)
 {
-	if(_what.size() < 0)
+	if(_what.size() == 0)
 	{
 		set_error_message("No data specified");
 		return;
@@ -130,11 +130,9 @@ void Archive::append_files(const Content_t& _what)
 
 	m_packed_file.clear();
 
-
 	std::rename(m_temporary_unpacked_file.get_path().c_str(), (m_temporary_unpacked_file.get_path() + ".old").c_str());
+	File temp_new(m_temporary_unpacked_file.get_path());
 	m_temporary_unpacked_file.set_path(m_temporary_unpacked_file.get_path() + ".old");
-
-	File temp_new;
 	temp_new.clear();
 
 	std::string header_str;
@@ -142,14 +140,14 @@ void Archive::append_files(const Content_t& _what)
 	{
 		header_str += it->file_name;
 		header_str += '/';
-		header_str += std::to_string(it->file.length());
+		header_str += std::to_string(it->size);
 		header_str += '/';
 	}
 	for(auto it = _what.cbegin(); it != _what.cend(); ++it)
 	{
 		header_str += it->file_name;
 		header_str += '/';
-		header_str += std::to_string(it->file.length());
+		header_str += std::to_string(it->size);
 		header_str += '/';
 	}
 
@@ -157,27 +155,13 @@ void Archive::append_files(const Content_t& _what)
 	temp_new.append_block(header_str);
 
 	for(auto it = m_content.cbegin(); it != m_content.cend(); ++it)
-	{
-		unsigned int raw_offset = it->offset;
-		std::string chunk = it->file.extract_block(raw_offset, m_write_chunk_size);
-		while(chunk.size() > 0)
-		{
-			temp_new.append_block(chunk);
-			raw_offset += m_write_chunk_size;
-			chunk = it->file.extract_block(raw_offset, m_write_chunk_size);
-		}
-	}
+		temp_new.append_block_from_other(m_temporary_unpacked_file, it->offset, it->size);
+
 	for(auto it = _what.cbegin(); it != _what.cend(); ++it)
-	{
-		unsigned int raw_offset = 0;
-		std::string chunk = it->file.extract_block(raw_offset, m_write_chunk_size);
-		while(chunk.size() > 0)
-		{
-			temp_new.append_block(chunk);
-			raw_offset += m_write_chunk_size;
-			chunk = it->file.extract_block(raw_offset, m_write_chunk_size);
-		}
-	}
+		temp_new.append_block_from_other(it->file, it->offset, it->size);
+
+	std::remove(m_temporary_unpacked_file.get_path().c_str());
+	m_temporary_unpacked_file = temp_new;
 
 	HCoder coder;
 
@@ -195,15 +179,123 @@ void Archive::append_files(const Content_t& _what)
 }
 
 
-void Archive::unpack()
+void Archive::unpack(const std::list<std::string>& _files_to_unpack)
 {
+	auto contains_file = [](const std::list<std::string>& _list, const std::string& _file_name)->bool
+	{
+		for(const auto& file : _list)
+			if(file == _file_name)
+				return true;
+		return false;
+	};
+
 	for(auto it = m_content.cbegin(); it != m_content.cend(); ++it)
 	{
+		if(_files_to_unpack.size() > 0)
+		{
+			if(!contains_file(_files_to_unpack, it->file_name))
+				continue;
+		}
+
 		File file(it->file_name);
 		file.clear();
 
 		file.append_block_from_other(it->file, it->offset, it->size);
 	}
+}
+
+void Archive::exclude_files(const std::list<std::string>& _files_to_exclude)
+{
+	if(_files_to_exclude.size() == 0)
+	{
+		set_error_message("No data specified");
+		return;
+	}
+
+	if(_files_to_exclude.size() == m_content.size())
+	{
+		std::remove(m_packed_file.get_path().c_str());
+		std::remove(m_temporary_unpacked_file.get_path().c_str());
+
+		m_packed_file.set_path("");
+		m_temporary_unpacked_file.set_path("");
+
+		m_content.clear();
+
+		return;
+	}
+
+	auto contains_file = [](const std::list<std::string>& _list, const std::string& _file_name)->bool
+	{
+		for(const auto& file : _list)
+			if(file == _file_name)
+				return true;
+		return false;
+	};
+
+	m_packed_file.clear();
+
+	std::rename(m_temporary_unpacked_file.get_path().c_str(), (m_temporary_unpacked_file.get_path() + ".old").c_str());
+	File temp_new(m_temporary_unpacked_file.get_path());
+	m_temporary_unpacked_file.set_path(m_temporary_unpacked_file.get_path() + ".old");
+	temp_new.clear();
+
+	std::string header_str;
+	for(auto it = m_content.cbegin(); it != m_content.cend(); ++it)
+	{
+		if(contains_file(_files_to_exclude, it->file_name))
+			continue;
+
+		header_str += it->file_name;
+		header_str += '/';
+		header_str += std::to_string(it->size);
+		header_str += '/';
+	}
+
+	temp_new.append_block(std::to_string(header_str.size()) + "\n");
+	temp_new.append_block(header_str);
+
+	for(auto it = m_content.cbegin(); it != m_content.cend(); ++it)
+	{
+		if(contains_file(_files_to_exclude, it->file_name))
+			continue;
+		temp_new.append_block_from_other(m_temporary_unpacked_file, it->offset, it->size);
+	}
+
+	std::remove(m_temporary_unpacked_file.get_path().c_str());
+	m_temporary_unpacked_file = temp_new;
+
+	HCoder coder;
+
+	unsigned int raw_offset = 0;
+	std::string chunk = m_temporary_unpacked_file.extract_block(raw_offset, m_write_chunk_size);
+	while(chunk.size() > 0)
+	{
+		coder.encode(chunk);
+		m_packed_file.append_block(coder.encoded_data());
+		raw_offset += m_write_chunk_size;
+		chunk = m_temporary_unpacked_file.extract_block(raw_offset, m_write_chunk_size);
+	}
+
+	M_parse_content();
+}
+
+
+void Archive::clear()
+{
+	m_temporary_unpacked_file.clear();
+	m_packed_file.clear();
+	m_content.clear();
+}
+
+
+
+bool Archive::contains(const std::string &_file_name) const
+{
+	for(const auto& file : m_content)
+		if(file.file_name == _file_name)
+			return true;
+	return false;
 }
 
 

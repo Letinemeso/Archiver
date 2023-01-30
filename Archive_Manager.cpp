@@ -74,12 +74,13 @@ bool Archive_Manager::pack_files(const Files_Paths& _files_to_pack, const std::s
 		++it;
 	}
 	Archive archive(_archive_name);
-	archive.pack(file_data);
+	archive.clear();
+	archive.append_files(file_data);
 
-	return true;
+	return archive.is_ok();
 }
 
-bool Archive_Manager::append_files(const std::string &_append_to, const Files_Paths &_files_to_append)
+bool Archive_Manager::append_files(const std::string& _append_to, const Files_Paths &_files_to_append)
 {
 	clear_error_log();
 
@@ -114,211 +115,146 @@ bool Archive_Manager::append_files(const std::string &_append_to, const Files_Pa
 	if(!all_files_exist)
 		return false;
 
+	Archive::Content_t file_data;
 
-//	Archive archive;
-//	std::list<Archive::File_Data> archived_files = archive.unpack(archive_file);
-
-//	for(auto it = _files_to_append.cbegin(); it != _files_to_append.cend(); ++it)
-//		archived_files.push_back({File(*it), parse_file_name(*it)});
-
-//	archive_file.clear();
-//	archive.pack(archive_file, archived_files);
-
-	return true;
-}
-
-bool Archive_Manager::exclude_files(Archive &_exclude_from, const Files_Paths &_files_to_exclude)
-{
-	clear_error_log();
-
-//	if(!_exclude_from.is_ok())
-//	{
-//		append_error_message(_exclude_from.error());
-//		return false;
-//	}
-
-//	if(_files_to_exclude.size() == 0)
-//	{
-//		append_error_message("No files to exclude specified");
-//		return false;
-//	}
-
-//	bool all_files_exist = true;
-
-//	if(_files_to_exclude.size() >= _exclude_from.unpacked_data().size())
-//	{
-//		append_error_message("Cannot remove all files from archive, just delete it instead");
-//		return false;
-//	}
-
-//	std::list<std::string>::const_iterator it = _files_to_exclude.cbegin();
-//	while(it != _files_to_exclude.cend())
-//	{
-//		const std::string* check = _exclude_from.unpacked_data(*it);
-//		if(check == nullptr)
-//		{
-//			all_files_exist = false;
-//			append_error_message("File \"" + *it + "\" not found");
-//		}
-
-//		++it;
-//	}
-
-//	if(!all_files_exist)
-//		return false;
-
-//	it = _files_to_exclude.cbegin();
-//	while(it != _files_to_exclude.cend())
-//	{
-//		_exclude_from.remove_raw_file_data(*it);
-//		++it;
-//	}
-
-//	_exclude_from.pack();
-
-	return true;
-}
-
-bool Archive_Manager::merge_archives(const Files_Paths& _archives)
-{
-//	clear_error_log();
-
-//	if(_archives.size() < 2)
-//	{
-//		append_error_message("Cannot merge less then 2 archives");
-//		return nullptr;
-//	}
-
-//	Archive* result = new Archive;
-
-//	Files_Paths::const_iterator it = _archives.cbegin();
-//	while(it != _archives.cend())
-//	{
-//		Archive_Manager mgr;
-//		Archive* archive = mgr.load(*it);
-//		if(archive == nullptr)
-//		{
-//			append_error_message(mgr.error_log());
-//			delete result;
-//			return nullptr;
-//		}
-//		if(!archive->is_ok())
-//		{
-//			append_error_message(mgr.error_log());
-//			delete archive;
-//			delete result;
-//			return nullptr;
-//		}
-
-//		Archive::Files_Data& archive_data = archive->unpacked_data();
-//		Archive::Files_Data::iterator arc_it = archive_data.begin();
-//		while(arc_it != archive_data.end())
-//		{
-//			result->add_raw_file_data(arc_it->first, (std::string&&)arc_it->second);
-//			++arc_it;
-//		}
-
-//		delete archive;
-
-//		++it;
-//	}
-
-//	result->pack();
-
-//	if(result->is_ok())
-//		return result;
-
-//	append_error_message(result->error());
-//	delete result;
-
-	return false;
-}
-
-bool Archive_Manager::unpack_files(const std::string& _archive_path, const std::string& _where)
-{
-	clear_error_log();
-
-	File archive_file(_archive_path);
-
-	if(!archive_file.exists())
+	it = _files_to_append.cbegin();
+	while(it != _files_to_append.cend())
 	{
-		append_error_message("Archive file \"" + _archive_path + "\" not found");
+		Archive::File_Data data;
+
+		data.file_name = parse_file_name(*it);
+		data.file.set_path(*it);
+		data.size = data.file.length();
+
+		file_data.push_back(data);
+
+		++it;
+	}
+	Archive archive(_append_to);
+//	archive.clear();
+	archive.append_files(file_data);
+
+	return archive.is_ok();
+}
+
+bool Archive_Manager::exclude_files(const std::string& _exclude_from, const Files_Paths &_files_to_exclude)
+{
+	clear_error_log();
+
+	if(_files_to_exclude.size() == 0)
+	{
+		append_error_message("No files to exclude specified");
 		return false;
 	}
 
-	std::string path = _where;
-	if(path.size() != 0)
+	Archive archive(_exclude_from);
+
+	bool all_files_exist = true;
+	for(auto it = _files_to_exclude.cbegin(); it != _files_to_exclude.cend(); ++it)
 	{
-		if(path[path.size() - 1] != '/')
-			path += '/';
+		if(!archive.contains(*it))
+		{
+			all_files_exist = false;
+			append_error_message("Specified archive does not contain file \"" + *it + "\"");
+		}
+	}
+
+	if(!all_files_exist)
+		return false;
+
+	archive.exclude_files(_files_to_exclude);
+
+	return archive.is_ok();
+}
+
+bool Archive_Manager::merge_archives(const std::string& _archive_path, const Files_Paths& _archives)
+{
+	clear_error_log();
+
+	if(_archives.size() < 2)
+	{
+		append_error_message("Cannot merge less then 2 archives");
+		return false;
 	}
 
 	Archive archive(_archive_path);
-	archive.unpack();
+	archive.clear();
 
-	return true;
+	std::list<Archive> archives_to_merge;
+	for(const auto& path : _archives)
+		archives_to_merge.push_back(Archive(path));
+
+	Archive::Content_t merged_content;
+	for(const auto& archive : archives_to_merge)
+	{
+		for(const auto& data : archive.content())
+			merged_content.push_back(data);
+	}
+
+	archive.append_files(merged_content);
+
+	return archive.is_ok();
 }
 
-bool Archive_Manager::unpack_files(const Archive &_archive, const Files_Paths& _files_to_unpack)
+bool Archive_Manager::unpack_files(const std::string& _archive, const Files_Paths& _files_to_unpack)
 {
-//	clear_error_log();
+	clear_error_log();
 
-//	if(!_archive.is_ok())
-//	{
-//		append_error_message("Unable to unpack archive with errors: " + _archive.error());
-//		return false;
-//	}
+	File archive_file(_archive);
 
-//	if(_files_to_unpack.size() == 0)
-//	{
-//		append_error_message("No files to unpack specified");
-//		return false;
-//	}
+	if(!archive_file.exists())
+	{
+		append_error_message("Archive file \"" + _archive + "\" not found");
+		return false;
+	}
 
-//	bool all_files_exist = true;
+	Archive archive(_archive);
 
-//	std::list<std::string>::const_iterator it = _files_to_unpack.cbegin();
-//	while(it != _files_to_unpack.cend())
-//	{
-//		std::string file_name = parse_file_name(*it);
+	bool contains_all_files = true;
+	for(const auto& filename : _files_to_unpack)
+	{
+		if(!archive.contains(filename))
+		{
+			contains_all_files = false;
+			append_error_message("Specified arachive does not contain file \"" + filename + "\"");
+		}
+	}
 
-//		const std::string* file_data = _archive.unpacked_data(file_name);
-//		if(file_data == nullptr)
-//		{
-//			append_error_message("File \"" + file_name + "\" not found in specified archive");
-//			all_files_exist = false;
-//		}
+	if(!contains_all_files)
+		return false;
 
-//		++it;
-//	}
+	archive.unpack(_files_to_unpack);
 
-//	if(!all_files_exist)
-//		return false;
+	return archive.is_ok();
+}
 
 
-//	it = _files_to_unpack.begin();
-//	while(it != _files_to_unpack.cend())
-//	{
-//		std::string file_name = parse_file_name(*it);
+std::list<std::string> Archive_Manager::get_archive_content(const std::string &_archive)
+{
+	clear_error_log();
 
-//		const std::string* file_data = _archive.unpacked_data(file_name);
+	File archive_file(_archive);
 
-//		std::ofstream file(*it, std::ios::binary);
-//		if(!file.is_open())
-//		{
-//			append_error_message("Could not open or create file \"" + *it + ".haf\"");
-//			++it;
-//			continue;
-//		}
+	if(!archive_file.exists())
+	{
+		append_error_message("Archive file \"" + _archive + "\" not found");
+		return {};
+	}
 
-//		file << *file_data;
+	Archive archive(_archive);
 
-//		file.close();
+	if(!archive.is_ok())
+	{
+		append_error_message(archive.error());
+		return {};
+	}
 
-//		++it;
-//	}
+	std::list<std::string> result;
 
-	return true;
+	for(const auto& file : archive.content())
+		result.push_back(file.file_name);
+
+	return result;
 }
 
 
